@@ -1,0 +1,146 @@
+---
+title: "Applied_statistics_HW1"
+author: "Ganaeva Daria"
+date: "01 04 2024"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+1. Install necessary packages
+
+```{r,  message=FALSE, warning=FALSE}
+#install.packages("vegan")
+# install.packages("devtools")
+#devtools::install_github("gavinsimpson/ggvegan")
+
+```
+
+2. Upload necessary packages
+
+```{r,  message=FALSE, warning=FALSE}
+library(vegan)
+library(ggvegan)
+```
+
+3. Upload the data
+
+```{r}
+data(BCI)
+data(BCI.env)
+```
+
+4. Exploratory data analysis
+(explore data structure; check for missing values, outliers; collect summary data; filter out low abundance and non-significant data)
+
+```{r}
+#head(BCI)
+head(BCI.env)
+
+length(which(is.na(BCI)))
+length(which(is.na(BCI.env)))
+
+boxplot(BCI) 
+
+#summary(BCI) 
+BCI_f <- BCI[colMeans(BCI)>=1]
+
+summary(BCI.env) 
+BCI.env_f <- BCI.env[,-c(3,4,6)]
+
+```
+
+5. Ordination of objects
+
+```{r}
+
+ordi <- metaMDS(BCI_f, dist = "bray", autotransform = FALSE) #stress < 0.2 - we can continue
+
+#point coordinates; merge with environmental data
+ordi_pt <- data.frame(BCI.env_f, scores(ordi, display = "sites"))
+
+#species
+ordi_sp <- data.frame(scores(ordi, display = "species"))
+ordi_sp$Species <- rownames(ordi_sp)
+
+```
+
+6. Visualization
+
+```{r}
+
+# Shepherd's diagram
+stressplot(ordi)
+
+#visualize using ggplot()
+gg_ordi <- ggplot() +
+  geom_point(data = ordi_pt, 
+             aes(x = NMDS1, y = NMDS2, colour = Habitat, 
+                 shape = Stream, size = EnvHet), alpha = 0.6)
+gg_ordi
+
+#add species labels 
+gg_ordi_sp <- gg_ordi +
+  geom_text(data = ordi_sp, 
+            aes(x = NMDS1, y = NMDS2, 
+                label = Species), size=2) 
+
+gg_ordi_sp
+
+#take another set of env factors
+gg_ordi <- ggplot() +
+  geom_point(data = ordi_pt, 
+             aes(x = NMDS1, y = NMDS2, colour = Habitat, 
+                size = UTM.EW, shape=Stream), alpha = 0.6)
+
+gg_ordi
+
+gg_ordi <- ggplot() +
+  geom_point(data = ordi_pt, 
+             aes(x = NMDS1, y = NMDS2, colour = Habitat, 
+                size = UTM.NS, shape=Stream), alpha = 0.6)
+
+gg_ordi
+
+```
+
+7. Interpretation of ordination
+
+```{r}
+efit <- envfit(ordi, BCI.env_f[, -c(3)])
+
+efit$vectors
+
+efit$factors
+
+#statistical significance observed for UTM.EW and Habitat (P-value <0.001)
+```
+
+8. Visualization
+
+```{r}
+pal_col <- c("red", "green", "blue", "black", "orange")
+pal_sh <- c(0,1)
+
+ordiplot(ordi, type = "n")
+points(ordi, col = BCI.env_f$Habitat, pch = pal_sh[BCI.env_f$Stream])
+plot(efit)
+
+#correlation observed for UTM.EW, EnvHet and Habitat OldLow
+```
+9. ordisurf() and visualization
+
+```{r}
+ordisurf_UE <- ordisurf(ordi, BCI.env_f$UTM.EW, method = "REML")
+ordisurf_EH <- ordisurf(ordi, BCI.env_f$EnvHet, method = "REML") 
+
+summary(ordisurf_UE)
+summary(ordisurf_EH)
+
+#correlation for UTM.EW, with community is statistically significant; for EnvHet - not
+```
+
+10. Conclusions
+
+We discovered the relationship between tropical tree species beta-diversity and different environmental factors. 
+Correlation with statistical significance was observed for such factors as Habitat and UTM (East-Western coordinates).
