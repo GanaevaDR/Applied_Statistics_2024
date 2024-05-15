@@ -1,0 +1,222 @@
+---
+title: "Applied_Statistics_HW2"
+author: "Daria Ganaeva"
+date: "10 05 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Upload the packages:
+```{r}
+require(golubEsets)
+library(vegan)
+library(dplyr)
+library(ggplot2)
+library(tibble)
+library(gridExtra)
+library(ape)
+library(pvclust)
+```
+
+Upload the data
+```{r}
+require(golubEsets)
+data(Golub_Merge)
+data <- data.frame(Golub_Merge)[1:7129]
+```
+
+Information about the dataset:
+
+This dataset comes from a proof-of-concept study published in 1999 by Golub et al. It showed how new cases of cancer could be classified by gene expression monitoring (via DNA microarray) and thereby provided a general approach for identifying new cancer classes and assigning tumors to known classes. These data were used to classify patients with acute myeloid leukemia (AML) and acute lymphoblastic leukemia (ALL)
+
+This dataset contains measurements corresponding to ALL and AML samples from Bone Marrow and Peripheral Blood. Intensity values have been re-scaled such that overall intensities for each chip are equivalent.
+
+Source: https://www.kaggle.com/datasets/crawford/gene-expression
+
+
+Prepare the data for further analysis (rename row names):
+```{r}
+data1 <- data
+rownames(data1) <- paste(1:72, Golub_Merge$ALL.AML)
+```
+
+Based on Kaggle information, this dataset has already been re-scaled, so we can proceed with the analysis.
+
+Try different distance methods: Euclidean, Gower, Canberra
+
+```{r}
+euc_dist <- vegdist(data1, method="euclidean")
+gower_dist <- vegdist(data1, method="gower")
+canberra_dist <- vegdist(data1, method="canberra")
+```
+
+Draw plots for each distance method:
+```{r}
+distances <- data.frame(Euc = as.numeric(euc_dist), Gower= as.numeric(gower_dist), Canberra = as.numeric(canberra_dist))
+
+Pl_hist <- ggplot(distances) + geom_density()
+
+Pl_euc <- Pl_hist + aes(x = Euc) + ggtitle("Raw") + labs(x = "Euclidean distance")
+Pl_gower <- Pl_hist + aes(x = Gower) + ggtitle("Raw") + labs(x = "Gower distance")
+Pl_canberra <- Pl_hist + aes(x = Canberra) + ggtitle("Raw") + labs(x = "Canberra distance")
+
+grid.arrange(Pl_euc, Pl_gower, Pl_canberra)
+```
+
+
+Try different clustering methods and choose the best:
+
+for Euclidean:
+```{r}
+#for eucl
+d<-euc_dist
+
+# The nearest neighbor method
+hc_single <- hclust(d, method = "single")
+ph_single <- as.phylo(hc_single)
+plot(hc_single)
+
+#correlation coefficient
+c_single <- cophenetic(ph_single)
+cor(d, as.dist(c_single)) #0.76
+
+#Complete linkage
+hc_compl <- hclust(d, method = "complete")
+ph_compl <- as.phylo(hc_compl)
+plot(hc_compl)
+
+c_compl <- cophenetic(ph_compl)
+cor(d, as.dist(c_compl)) #0.49 
+
+#UPGMA 
+hc_avg <- hclust(d, method = "average")
+ph_avg <- as.phylo(hc_avg)
+plot(hc_avg)
+
+c_avg <- cophenetic(ph_avg)
+cor(d, as.dist(c_avg)) #0.82 
+
+#Ward method
+hc_w2 <-hclust(d, method = "ward.D2")
+ph_w2 <- as.phylo(hc_w2)
+plot(hc_w2)
+
+c_w2 <- cophenetic(ph_w2)
+cor(d, as.dist(c_w2)) #0.509 
+```
+
+
+
+for Gower:
+```{r}
+d<-gower_dist
+
+# The nearest neighbor method
+hc_single <- hclust(d, method = "single")
+ph_single <- as.phylo(hc_single)
+plot(hc_single)
+
+#correlation coefficient
+c_single <- cophenetic(ph_single)
+cor(d, as.dist(c_single)) #0.85
+
+
+#Complete linkage:
+hc_compl <- hclust(d, method = "complete")
+ph_compl <- as.phylo(hc_compl)
+plot(hc_compl)
+
+c_compl <- cophenetic(ph_compl)
+cor(d, as.dist(c_compl)) #0.68
+
+#UPGMA method 
+hc_avg <- hclust(d, method = "average")
+ph_avg <- as.phylo(hc_avg)
+plot(hc_avg)
+
+c_avg <- cophenetic(ph_avg)
+cor(d, as.dist(c_avg)) #0.87
+
+#Ward method
+hc_w2 <-hclust(d, method = "ward.D2")
+ph_w2 <- as.phylo(hc_w2)
+plot(hc_w2)
+
+c_w2 <- cophenetic(ph_w2)
+cor(d, as.dist(c_w2)) #0.45
+
+```
+
+
+
+For Canberra:
+```{r}
+d<-canberra_dist
+
+# The nearest neighbor method
+hc_single <- hclust(d, method = "single")
+ph_single <- as.phylo(hc_single)
+plot(hc_single)
+
+#correlation coefficient
+c_single <- cophenetic(ph_single)
+cor(d, as.dist(c_single)) #0.72
+
+#Complete linkage
+hc_compl <- hclust(d, method = "complete")
+ph_compl <- as.phylo(hc_compl)
+plot(hc_compl)
+
+c_compl <- cophenetic(ph_compl)
+cor(d, as.dist(c_compl)) #0.46
+
+#UPGMA method 
+hc_avg <- hclust(d, method = "average")
+ph_avg <- as.phylo(hc_avg)
+plot(hc_avg)
+
+c_avg <- cophenetic(ph_avg)
+cor(d, as.dist(c_avg)) #0.77
+
+#Ward method
+hc_w2 <-hclust(d, method = "ward.D2")
+ph_w2 <- as.phylo(hc_w2)
+plot(hc_w2)
+
+c_w2 <- cophenetic(ph_w2)
+cor(d, as.dist(c_w2)) #0.34
+
+```
+
+
+Now we need to choose the best distance matrix and clustering methods.
+
+The highest correlation coefficient (0.87) was observed when using UPGMA clustering method and Gower distance.
+However, this distance method is not included in pvclust, so we will proceed with UPGMA clustering method and Euclidean
+distance. In this case correlation coefficient was equal to 0.82.
+
+Now let's perform bootstrap analysis with 50 repetitions:
+
+```{r}
+cl_boot <- pvclust(t(data1), method.hclust = "average", nboot = 50, method.dist = "euclidean", parallel = TRUE, iseed = 45)
+plot(cl_boot)
+```
+
+Conclusions:
+
+This dataset represents DNA-microarray data of 72 patients having either acute myeloid leukemia (AML) or acute lymphoblastic leukemia (ALL).
+
+The goal of the analysis was to investigate if people having these two types of cancer could be distinguished based 
+on gene expression data. We also tried to optimize the clustering approach; find distance matrix and clustering method that would lead to the highest correlation coefficient which basically represents clustering quality. In our case it is Gower distance and UPGMA clustering method. The correlation coefficient in this case is equal to 0.87.
+
+We also built phylogenetic trees and observed that ALL and AML patients can be distinguished quite well, 
+comprising distinct clusters, with just few exceptions. 
+Bootstrap analysis was also carried out to check the stability of the tree.
+
+From biological point of view, grouping of AML and ALL patients into distinct groups means that serious genetic changes associated with the development of certain disease take place, with specific patterns for ALL and AML diseases.
+
+All in all, we were able to classify two types of cancer based on gene expression monitoring and analysis.
+Therefore, it should be possible in general to classify and assign tumors based on gene expression data, which could be done using ML approach.

@@ -1,0 +1,98 @@
+---
+title: "HW4_Applied_Statistics"
+author: "Daria Ganaeva"
+date: "14 05 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Description of the task:
+
+You have been provided with data to assess the effects of grazing on the zoobenthos of rivers on the island of Tasmania. You need to identify which external factors have the greatest influence on changes in the composition of fauna.
+
+
+Upload packages:
+```{r}
+library(readxl)
+library(vegan)
+library(ggplot2)
+library(dplyr)
+```
+
+
+Upload and prepare the data:
+```{r}
+data_fauna <- read_excel('Grazing_Magierowski_et_al_2015.xls', sheet = 'fauna')
+data_fauna <- as.data.frame(data_fauna)
+data_env <- read_excel('Grazing_Magierowski_et_al_2015.xls', sheet = 'env')
+data_env <- as.data.frame(data_env)
+
+rownames(data_env) <- data_env$SITE
+rownames(data_fauna) <- data_fauna$SITE
+```
+
+
+Select columns containing numeric values for the analysis:
+```{r}
+data_env <- dplyr::select_if(data_env, is.numeric)
+data_fauna <- dplyr::select_if(data_fauna, is.numeric)
+```
+
+
+Work with NAs. Check which data contains it and replace with means:
+```{r}
+sum(is.na(data_fauna)) #0
+sum(is.na(data_env)) #15
+
+for(i in 1:ncol(data_env)){
+  data_env[is.na(data_env[,i]), i] <- mean(data_env[,i], na.rm = TRUE)
+}
+
+sum(is.na(data_env)) #0
+```
+
+
+Work with column names:
+
+```{r}
+colnames(data_env) <- gsub(" ", "_", colnames(data_env))
+
+colnames(data_env) <- c('Abstraction','Regulation','Grazing_proportion_of_total_catchment_area','fines_proportion_substrata','Temperature_oC','Conductivity_uS_cm','average_turbidity_NTU','pH','Alkalinity_Total_mg_CaCO3_L','Nitrate_Nitrite_mg_N_L','DRP_mg_P_L','N_total_mg_N_L','P_Total_mg_P_L','Average_shading','Average_algae_cover','Chl_a_mg_m2')
+```
+
+
+CCA analysis:
+
+```{r}
+cca_res <- cca(data_fauna ~ Grazing_proportion_of_total_catchment_area + 
+                 fines_proportion_substrata + Temperature_oC + Conductivity_uS_cm + average_turbidity_NTU + 
+                 pH + Alkalinity_Total_mg_CaCO3_L + Nitrate_Nitrite_mg_N_L + DRP_mg_P_L + N_total_mg_N_L +
+                 P_Total_mg_P_L + Average_shading + Average_algae_cover + Chl_a_mg_m2, data=data_env, scale=T)
+```
+
+
+Visualize the result:
+```{r}
+plot(cca_res, scaling="sites")
+```
+
+
+Perform statistical test to study which environmental factors are crucial:
+```{r}
+anova(cca_res, by = "term")
+```
+
+
+Conclusions:
+With the probability of 0.01, we can conclude that such factors as: 
+- Grazing proportion of total catchment area, 
+- Temperature,
+- Conductivity, 
+- Average Turbidity, 
+- Total Alkalinity,
+- DRP
+
+have significant changes on fauna composition of zoobenthos from Tasmania rivers.
