@@ -1,0 +1,119 @@
+---
+title: "HW3_Applied_Stats"
+author: "Daria Ganaeva"
+date: "13 05 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Upload libraries:
+```{r}
+library(readxl)
+library(vegan)
+library(ggplot2)
+library(plotly)
+library(impute)
+library(factoextra)
+```
+
+
+Upload the data and select necessary columns:
+```{r}
+data <- read_excel("Sleepy lizard.xlsx")
+
+data <- data[,c(4,5,6,7,13,14,15,16,17,18,9)]
+```
+
+
+Transform variables as factors where possible:
+```{r}
+str(data)
+data$Treatment<-as.factor(data$Treatment)
+data$Habitat<-as.factor(data$Habitat)
+data$Connectivity<-as.factor(data$Connectivity)
+data$`Landscape ID`<-as.factor(data$`Landscape ID`)
+```
+
+
+Work with NAs:
+```{r}
+data<-na.omit(data)
+
+data_land_modi <- filter(data, Treatment==2)
+```
+We removed missing values and created a new variable, for lizards from heavily modified landscape. We will need it later.
+
+Data normalization:
+```{r}
+boxplot(data[-c(1:4)])
+
+log_data <- log(data[-c(1:4)] + 1)
+log_data_land_modi <- log(data_land_modi[-c(1:4)] + 1)
+
+center <- function(x){
+  x - mean(x, na.rm = TRUE)
+}
+
+cent <- t(apply(log_data, 1, center))
+cent1 <- t(apply(log_data_land_modi, 1, center))
+
+center_log_data <- apply(t(cent), 1, center)
+center_log_data_modi <- apply(t(cent1), 1, center)
+
+boxplot(center_log_data)
+```
+Now, the data distribution looks good. We can continue the analysis.
+
+
+PCA analysis:
+```{r}
+pca_res <- prcomp(center_log_data)
+groups <- data$Habitat
+fviz_pca_ind(pca_res,axes =   c(1,2),
+             col.ind = groups, 
+             palette = c("#00AFBB",  "#FC4E07", "yellow"),
+             addEllipses = TRUE,
+             ellipse.type = "confidence",
+             legend.title = "Groups",
+             repel = TRUE
+)
+
+summary(pca_res)
+```
+We can see that first two principle components describe 91% of variability, which is nice.
+
+
+Check variance:
+```{r}
+dist_data<- vegdist(center_log_data, method  = "euclidean")
+
+PCO_data <- betadisper(dist_data, data$Habitat)
+anova(PCO_data)
+
+PCO_data1 <- betadisper(dist_data, data$Treatment)
+anova(PCO_data1)
+
+PCO_data2 <- betadisper(dist_data, data$Connectivity)
+anova(PCO_data2)
+```
+No significant difference of variances between groups is observed. We can continue.
+
+perMANOVA analysis:
+```{r}
+adonis2(center_log_data ~ data$Treatment, method = "euclidean") #significant
+
+adonis2(center_log_data_modi ~ data_land_modi$Habitat, method = "euclidean")
+
+adonis2(center_log_data_modi ~ data_land_modi$Connectivity, method = "euclidean")
+
+adonis2(center_log_data_modi ~ data_land_modi$Habitat * data_land_modi$Connectivity, method = "euclidean")
+```
+
+
+Conclusions:
+
+All in all, significant difference was observed only in the case of blood composition of lizards from unmodified and heavily modified landscapes. 
+As for analysis of connectivity and habitat influence on lizards from heavily modified landscapes, no significant difference  of blood composition was observed for this group of lizards.
