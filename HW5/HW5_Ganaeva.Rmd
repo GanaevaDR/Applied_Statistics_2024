@@ -1,0 +1,151 @@
+---
+title: "HW5_Applied_Statistics"
+author: "Daria Ganaeva"
+date: "31 05 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Upload the libraries:
+```{r, warning=FALSE, message=FALSE}
+library(ade4)
+library(vegan)
+library(car)
+```
+
+Upload the data:
+```{r}
+data('doubs', package = 'ade4')
+```
+
+Distinguish the data:
+```{r}
+fish <- doubs$fish
+envi <- doubs$env
+coord <- doubs$xy
+```
+
+
+Explore the data:
+
+output first lines:
+
+```{r}
+head(fish, 3)
+head(envi, 3)
+head(coord, 3)
+envi_coord <- cbind(envi, coord)
+```
+
+doubs$env contains the following variables:
+
+dfs - distance from the source (km * 10), 
+
+alt - altitude (m), slo (log(x + 1) where x is the slope (per mil * 100),
+
+flo - minimum average stream flow (m3/s * 100), 
+
+pH (* 10), har - total hardness of water (mg/l of Calcium), 
+
+pho - phosphates (mg/l * 100),
+
+nit - nitrates (mg/l * 100), 
+
+amm - ammonia nitrogen (mg/l * 100),
+
+oxy - dissolved oxygen (mg/l * 10),
+
+bdo - biological demand for oxygen (mg/l * 10).
+
+
+
+Check the distribution:
+```{r}
+boxplot(fish)
+boxplot(envi)
+summary(fish)
+```
+The data looks okay, we can proceed without scaling.
+
+
+Check for missing values:
+```{r}
+sum(is.na(fish))
+sum(is.na(envi))
+sum(is.na(coord))
+```
+No missing value is present in the dataset.
+
+
+Check linearity of variables relationship:
+```{r}
+pairs(envi_coord)
+```
+
+
+RDA:
+```{r}
+vif(lm(fish$Satr ~ ., data = envi_coord))
+```
+
+Let's remove altitude and flow env factors as they have high vif and possibly correlate with slo variable:
+
+```{r}
+vif(lm(fish$Satr ~ . -alt -flo, data = envi_coord))
+```
+
+Now vif factors look much better.
+
+RDA analysis:
+```{r}
+rda <- rda(fish ~ dfs + slo + pH + har + pho + nit + amm + oxy + bdo, data = envi_coord)
+summary(rda) 
+```
+
+
+Env factors explain 73% of difference in fish data, that's good.
+
+Correlation:
+```{r}
+spenvcor(rda)
+```
+
+
+ANOVA:
+```{r}
+anova(rda, permutations = 999)
+```
+
+We have statistical difference in fish data under the influence of environmental factors.
+
+Now we should understand which variables have the most impact on fish distribution and appearance.
+
+```{r}
+anova(rda, by = "term", permutations = 9999)
+#dfs, pho, oxy
+```
+
+Now let's try another methods:
+```{r}
+anova(rda, by = "mar", permutations = 9999)
+#dfs, oxy if we test each factor independently
+```
+
+Private RDA:
+```{r}
+m1 <-rda(fish ~ dfs + oxy + pho, data = envi_coord)
+m0 <- rda(fish ~ 1, data = envi_coord)
+
+m <- ordistep(m0, scope = formula(m1), permutations = 9999)
+
+m$anova
+
+```
+We observe that optimal model contains all features that we added. They are: dfs, oxy, pho.
+
+Conclusion:
+
+Based on our analysis, such environmental factors as distance from the source, amount of dissolved oxygen, and, probably, phosphates are crucial factors that determine the appearance of fish communities in the river.
